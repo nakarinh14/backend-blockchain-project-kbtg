@@ -1,6 +1,6 @@
 import Joi from 'joi'
 
-const schema = Joi.object({
+export const transactionSchema = Joi.object({
     token_access: Joi
         .string()
         .required(),
@@ -11,5 +11,3 @@ const schema = Joi.object({
         .string()
         .required(),
 })
-
-export const transactionValidator = createValidatorMiddleware(schema);

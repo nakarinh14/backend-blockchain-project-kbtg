@@ -1,18 +1,20 @@
 // Endpoints to convert retrieve money from K Plus platform
-import { transactionValidator } from '../../validators/transaction';
 import KBankTransactionService from "../../services/transaction";
-import { isAuth } from "../middlewares/isAuth"
 import { Router } from 'express'
 
 const router = Router();
 
-router.post('/withdraw', isAuth, transactionValidator, async (req, res) => {
+router.post('/withdraw', async (req, res) => {
     try{
         const withdrawResponse = await KBankTransactionService.Withdraw(req.body);
         res.send('respond with a resource');
-    } catch (e) {
-        res.status(400).send({error: e})
+    } catch (err) {
+        res.status(400).send({error: err})
     }
 });
 
-module.exports = router;
+router.post('/donate', (req, res) => {
+    res.send('respond with a resource');
+})
+
+export default router;

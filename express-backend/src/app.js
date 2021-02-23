@@ -1,20 +1,25 @@
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+import express from 'express';
+import path from 'path';
+import cookieParser from 'cookie-parser';
+import logger from 'morgan';
+import indexRouter from './api/routes/index';
+import authRouter from './api/routes/auth';
+import transactionRouter from './api/routes/transaction';
 
-var indexRouter = require('./api/routes');
-var usersRouter = require('./api/routes/auth');
+import requestValidator from "./api/middlewares/requestValidator"
+import { isAuth } from "./api/middlewares/isAuth";
 
-var app = express();
+const app = express();
+const validatorMiddleware = requestValidator();
 
-app.use(logger('dev'));
+app.use(logger('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
+app.use('/api/auth', validatorMiddleware, authRouter);
+app.use('/api/transaction', isAuth, validatorMiddleware, transactionRouter);
 
-module.exports = app;
+export default app;

@@ -9,7 +9,7 @@ export default class KBankTransactionService {
             const encodedCredential = Buffer.from(credential).toString('base64');
             const response = await got.post('https://openapi-sandbox.kasikornbank.com/oauth/token', {
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Type': 'application/x-www.js-form-urlencoded',
                     'Authorization': credential
                 },
                 form: {
@@ -18,8 +18,8 @@ export default class KBankTransactionService {
             })
 
             return response.body['access_token']
-        } catch (e) {
-            console.log(e)
+        } catch (err) {
+            console.log(err)
         }
     }
 
@@ -34,8 +34,8 @@ export default class KBankTransactionService {
             return await got.post(url, {
                 ...requestConfig, headers
             })
-        } catch (e) {
-            console.log(e)
+        } catch (err) {
+            console.log(err)
         }
     }
 
@@ -63,8 +63,8 @@ export default class KBankTransactionService {
             }
 
             return await this.AuthGuardedRequest(url, body)
-        } catch (e) {
-            console.log(e)
+        } catch (err) {
+            console.log(err)
         }
     }
 
@@ -102,8 +102,8 @@ export default class KBankTransactionService {
             }
 
             return await this.AuthGuardedRequest(url, body)
-        } catch (e) {
-            console.log(e)
+        } catch (err) {
+            console.log(err)
         }
     }
 

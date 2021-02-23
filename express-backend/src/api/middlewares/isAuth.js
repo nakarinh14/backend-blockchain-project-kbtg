@@ -8,9 +8,9 @@ export const isAuth = async (req, res, next) => {
         // res.locals.uid = decodedToken.uid;
         next()
     }
-    catch (e){
+    catch (err){
         res.status(401).send({
-            error: e
+            error: err
         })
     }
 }
