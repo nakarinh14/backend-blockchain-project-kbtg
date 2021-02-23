@@ -1,4 +1,6 @@
 firebase-admin-pk.json
+.env
+
 # OS X
 .DS_Store*
 Icon?
