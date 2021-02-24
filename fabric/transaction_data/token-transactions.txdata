@@ -1,0 +1,44 @@
+[
+    {
+        "transactionName": "tokenExists",
+        "transactionLabel": "A test tokenExists transaction",
+        "arguments": [
+            "001"
+        ],
+        "transientData": {}
+    },
+    {
+        "transactionName": "createToken",
+        "transactionLabel": "A test createToken transaction",
+        "arguments": [
+            "001",
+            "some value"
+        ],
+        "transientData": {}
+    },
+    {
+        "transactionName": "readToken",
+        "transactionLabel": "A test readToken transaction",
+        "arguments": [
+            "001"
+        ],
+        "transientData": {}
+    },
+    {
+        "transactionName": "updateToken",
+        "transactionLabel": "A test updateToken transaction",
+        "arguments": [
+            "001",
+            "some other value"
+        ],
+        "transientData": {}
+    },
+    {
+        "transactionName": "deleteToken",
+        "transactionLabel": "A test deleteToken transaction",
+        "arguments": [
+            "001"
+        ],
+        "transientData": {}
+    }
+]
