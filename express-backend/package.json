@@ -10,6 +10,8 @@
     "debug": "~2.6.9",
     "esm": "^3.2.25",
     "express": "~4.16.1",
+    "fabric-ca-client": "^2.2.5",
+    "fabric-network": "^2.2.5",
     "firebase-admin": "^9.5.0",
     "got": "^11.8.1",
     "joi": "^17.4.0",
