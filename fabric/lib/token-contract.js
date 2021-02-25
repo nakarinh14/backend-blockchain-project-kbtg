@@ -8,13 +8,15 @@ const { Contract } = require('fabric-contract-api');
 
 // Define objectType names for prefix
 const balancePrefix = 'balance';
+const lastTransactionPrefix = 'lastTransaction'
 const allowancePrefix = 'allowance';
-
+const doneePrefix = 'donee'
 // Define key names for options
 const nameKey = 'name';
 const symbolKey = 'symbol';
 const decimalsKey = 'decimals';
 const totalSupplyKey = 'totalSupply';
+const lastGlobalTransactionKey = 'lastGlobalTransaction'
 
 class TokenERC20Contract extends Contract {
 
@@ -33,7 +35,7 @@ class TokenERC20Contract extends Contract {
     }
 
     /**
-     * Return the symbol of the token. E.g. “HIX”.
+     * Return the symbol of the token. E.g. KTW.
      *
      * @param {Context} ctx the transaction context
      * @returns {String} Returns the symbol of the token
@@ -69,13 +71,13 @@ class TokenERC20Contract extends Contract {
     }
 
     /**
-     * BalanceOf returns the balance of the given account.
+     * BalanceOfDonator returns the total balance of a donator account.
      *
      * @param {Context} ctx the transaction context
      * @param {String} owner The owner from which the balance will be retrieved
      * @returns {Number} Returns the account balance
      */
-    async BalanceOf(ctx, owner) {
+    async BalanceOfDonator(ctx, owner) {
         const balanceKey = ctx.stub.createCompositeKey(balancePrefix, [owner]);
 
         const balanceBytes = await ctx.stub.getState(balanceKey);
@@ -86,6 +88,38 @@ class TokenERC20Contract extends Contract {
 
         return balance;
     }
+    /**
+     * BalanceOfDonee returns the total balance of a donee account.
+     *
+     * @param {Context} ctx the transaction context
+     * @param {String} owner The owner from which the balance will be retrieved
+     * @returns {Object} Returns the account balance of each cause donated with total account balance
+     */
+    async BalanceOfDonee(ctx, owner) {
+        const balanceIterator = await ctx.stub.getStateByPartialCompositeKey(balancePrefix, [owner]);
+        const balanceObject = { total_balance: 0, causes: {} }
+        
+        while (true){
+            const responseRange = await balanceIterator.next();
+            console.log(responseRange)
+            if(responseRange && responseRange.value && responseRange.value.key){
+
+                const balanceBytes = responseRange.value.value;
+                const balance = parseInt(balanceBytes.toString());
+
+                const { _ , attributes } = ctx.stub.splitCompositeKey(responseRange.value.key);
+
+                const donationCause = attributes[1];
+   
+                balanceObject["causes"][donationCause] = balance
+                balanceObject['total_balance'] += balance
+            }
+            if(responseRange.done){
+                balanceIterator.close()
+                return balanceObject
+            }
+        }
+    }
 
     /**
      *  Transfer transfers tokens from client account to recipient account.
@@ -94,18 +128,19 @@ class TokenERC20Contract extends Contract {
      * @param {Context} ctx the transaction context
      * @param {String} to The recipient
      * @param {Integer} value The amount of token to be transferred
+     * @param {String} area The area of the donation
      * @returns {Boolean} Return whether the transfer was successful or not
      */
-    async Transfer(ctx, to, value) {
+    async Donate(ctx, to, amount, cause) {
         const from = ctx.clientIdentity.getID();
 
-        const transferResp = await this._transfer(ctx, from, to, value);
+        const transferResp = await this._transfer(ctx, from, to, amount, cause);
         if (!transferResp) {
             throw new Error('Failed to transfer');
         }
 
         // Emit the Transfer event
-        const transferEvent = { from, to, value: parseInt(value) };
+        const transferEvent = { from, to, amount: parseInt(value) };
         ctx.stub.setEvent('Transfer', Buffer.from(JSON.stringify(transferEvent)));
 
         return true;
@@ -120,46 +155,46 @@ class TokenERC20Contract extends Contract {
     * @param {Integer} value The amount of token to be transferred
     * @returns {Boolean} Return whether the transfer was successful or not
     */
-    async TransferFrom(ctx, from, to, value) {
-        const spender = ctx.clientIdentity.getID();
+    async DonateFrom(ctx, from, to, amount, cause) {
+        const spender = from;
 
         // Retrieve the allowance of the spender
-        const allowanceKey = ctx.stub.createCompositeKey(allowancePrefix, [from, spender]);
-        const currentAllowanceBytes = await ctx.stub.getState(allowanceKey);
+        // const allowanceKey = ctx.stub.createCompositeKey(allowancePrefix, [from, spender]);
+        // const currentAllowanceBytes = await ctx.stub.getState(allowanceKey);
 
-        if (!currentAllowanceBytes || currentAllowanceBytes.length === 0) {
-            throw new Error(`spender ${spender} has no allowance from ${from}`);
-        }
+        // if (!currentAllowanceBytes || currentAllowanceBytes.length === 0) {
+        //     throw new Error(`spender ${spender} has no allowance from ${from}`);
+        // }
 
-        const currentAllowance = parseInt(currentAllowanceBytes.toString());
+        // const currentAllowance = parseInt(currentAllowanceBytes.toString());
 
         // Convert value from string to int
-        const valueInt = parseInt(value);
+        const amountInt = parseInt(amount);
 
-        // Check if the transferred value is less than the allowance
-        if (currentAllowance < valueInt) {
-            throw new Error('The spender does not have enough allowance to spend.');
-        }
+        // // Check if the transferred value is less than the allowance
+        // if (currentAllowance < valueInt) {
+        //     throw new Error('The spender does not have enough allowance to spend.');
+        // }
 
-        const transferResp = await this._transfer(ctx, from, to, value);
+        const transferResp = await this._transfer(ctx, from, to, amount, cause);
         if (!transferResp) {
             throw new Error('Failed to transfer');
         }
 
         // Decrease the allowance
-        const updatedAllowance = currentAllowance - valueInt;
-        await ctx.stub.putState(allowanceKey, Buffer.from(updatedAllowance.toString()));
-        console.log(`spender ${spender} allowance updated from ${currentAllowance} to ${updatedAllowance}`);
+        // const updatedAllowance = currentAllowance - valueInt;
+        // await ctx.stub.putState(allowanceKey, Buffer.from(updatedAllowance.toString()));
+        // console.log(`spender ${spender} allowance updated from ${currentAllowance} to ${updatedAllowance}`);
 
         // Emit the Transfer event
-        const transferEvent = { from, to, value: valueInt };
+        const transferEvent = { from, to, amount: amountInt, cause };
         ctx.stub.setEvent('Transfer', Buffer.from(JSON.stringify(transferEvent)));
 
         console.log('transferFrom ended successfully');
         return true;
     }
 
-    async _transfer(ctx, from, to, value) {
+    async _transfer(ctx, from, to, value, cause) {
 
         // Convert value from string to int
         const valueInt = parseInt(value);
@@ -184,7 +219,7 @@ class TokenERC20Contract extends Contract {
         }
 
         // Retrieve the current balance of the recepient
-        const toBalanceKey = ctx.stub.createCompositeKey(balancePrefix, [to]);
+        const toBalanceKey = ctx.stub.createCompositeKey(balancePrefix, [to, cause]);
         const toCurrentBalanceBytes = await ctx.stub.getState(toBalanceKey);
 
         let toCurrentBalance;
@@ -199,8 +234,23 @@ class TokenERC20Contract extends Contract {
         const fromUpdatedBalance = fromCurrentBalance - valueInt;
         const toUpdatedBalance = toCurrentBalance + valueInt;
 
+        // Add transaction history
+
+        const lastTransaction = Buffer.from(JSON.stringify({
+            from, to, value, cause
+        }))
+        
+        const lastTransactionFrom = ctx.stub.createCompositeKey(lastTransactionPrefix, [from])
+        const lastTransactionTo = ctx.stub.createCompositeKey(lastTransactionPrefix, [to])
+    
         await ctx.stub.putState(fromBalanceKey, Buffer.from(fromUpdatedBalance.toString()));
         await ctx.stub.putState(toBalanceKey, Buffer.from(toUpdatedBalance.toString()));
+
+        // Update transaction history
+        await ctx.stub.putState(lastTransactionFrom, lastTransaction)
+        await ctx.stub.putState(lastTransactionTo, lastTransaction)
+        await ctx.stub.putState(lastGlobalTransactionKey, lastTransaction)
+
 
         console.log(`client ${from} balance updated from ${fromCurrentBalance} to ${fromUpdatedBalance}`);
         console.log(`recipient ${to} balance updated from ${toCurrentBalance} to ${toUpdatedBalance}`);
@@ -279,7 +329,7 @@ class TokenERC20Contract extends Contract {
      * @param {Integer} amount amount of tokens to be minted
      * @returns {Object} The balance
      */
-    async Mint(ctx, amount) {
+    async Mint(ctx, to, amount) {
 
         // Check minter authorization - this sample assumes Org1 is the central banker with privilege to mint new tokens
         const clientMSPID = ctx.clientIdentity.getMSPID();
@@ -288,7 +338,7 @@ class TokenERC20Contract extends Contract {
         }
 
         // Get ID of submitting client identity
-        const minter = ctx.clientIdentity.getID();
+        const minter = to;
 
         const amountInt = parseInt(amount);
         if (amountInt <= 0) {
@@ -336,7 +386,7 @@ class TokenERC20Contract extends Contract {
      * @param {Integer} amount amount of tokens to be burned
      * @returns {Object} The balance
      */
-    async Burn(ctx, amount) {
+    async Burn(ctx, owner, amount) {
 
         // Check minter authorization - this sample assumes Org1 is the central banker with privilege to burn tokens
         const clientMSPID = ctx.clientIdentity.getMSPID();
@@ -344,7 +394,7 @@ class TokenERC20Contract extends Contract {
             throw new Error('client is not authorized to mint new tokens');
         }
 
-        const minter = ctx.clientIdentity.getID();
+        const minter = owner;
 
         const amountInt = parseInt(amount);
 
@@ -356,7 +406,10 @@ class TokenERC20Contract extends Contract {
         }
         const currentBalance = parseInt(currentBalanceBytes.toString());
         const updatedBalance = currentBalance - amountInt;
-
+        
+        if (updatedBalance <= 0){
+            throw new Error('Not enough balance')
+        }
         await ctx.stub.putState(balanceKey, Buffer.from(updatedBalance.toString()));
 
         // Decrease totalSupply
@@ -403,61 +456,82 @@ class TokenERC20Contract extends Contract {
         const clientAccountID = ctx.clientIdentity.getID();
         return clientAccountID;
     }
-
-    async _getAllResults(iterator, isHistory) {
-        let allResults = [];
-        while (true) {
-          let res = await iterator.next();
-    
-        //   if (res.value && res.value.value.toString()) {
-        //     let jsonRes = {};
-        //     console.log(res.value.value.toString('utf8'));
-    
-        //     if (isHistory && isHistory === true) {
-        //       jsonRes.TxId = res.value.tx_id;
-        //       jsonRes.Timestamp = res.value.timestamp;
-        //       jsonRes.IsDelete = res.value.is_delete.toString();
-        //       try {
-        //         jsonRes.Value = JSON.parse(res.value.value.toString('utf8'));
-        //       } catch (err) {
-        //         console.log(err);
-        //         jsonRes.Value = res.value.value.toString('utf8');
-        //       }
-        //     } else {
-        //       jsonRes.Key = res.value.key;
-        //       try {
-        //         jsonRes.Record = JSON.parse(res.value.value.toString('utf8'));
-        //       } catch (err) {
-        //         console.log(err);
-        //         jsonRes.Record = res.value.value.toString('utf8');
-        //       }
-        //     }
-            allResults.push(res);
-        //   }
-          if (res.done) {
-            console.log('end of data');
-            await iterator.close();
-            console.info(allResults);
-            return allResults;
-          }
+    /**
+     * Helper function that helps with iterating and parsing transaction history
+     *
+     * @param {Context} ctx the transaction context.
+     * @param {Integer} iterator the HistoryIterator iterator.
+     * @returns {Array} Return the array of parsed history object.
+     */
+    async _iterateTransactionHisory(ctx, iterator) {
+        const store = []
+        while(true) {
+            const res = await iterator.next()
+            const jsonRes = {}
+            if(res && res.value){
+                jsonRes.tx_id = res.value.tx_id;
+                jsonRes.timestamp = res.value.timestamp;
+                jsonRes.data = JSON.parse(res.value.value.toString());
+                store.push(jsonRes)
+            }
+            if(res.done){
+                iterator.close()
+                return store
+            }
         }
-      }
-
-    async BalanceHistory(ctx){
-        const clientAccountID = ctx.clientIdentity.getID();
-        const balanceKey = ctx.stub.createCompositeKey(balancePrefix, [clientAccountID]);
-        
-        const iterator = await ctx.stub.getHistoryForKey(balanceKey);
-        const results = this._getAllResults(iterator, true);
-        return  Buffer.from(JSON.stringify(results));
     }
-    // Get transaction history by iterating the key
-    async TransactionHistory(ctx){
-        const clientAccountID = ctx.clientIdentity.getID();
+    /**
+     * Get history of all donation transaction within the channel.
+     *
+     * @param {Context} ctx the transaction context.
+     * @returns {Array} Return the array of parsed history object.
+     */
+    async AllTransactionHistory(ctx) {
+        const lastTransactionIterator = await ctx.stub.getHistoryForKey(lastGlobalTransactionKey)
+        return this._iterateTransactionHisory(ctx, lastTransactionIterator)
+    }
+    /**
+     * Get history of all donation transaction of a user.
+     *
+     * @param {Context} ctx the transaction context.
+     * @param {String} from the user whose transaction history is being requested.
+     * @returns {Array} Return the array of parsed history object.
+     */
+    async UserTransactionHistory(ctx, from) {
+        const lastTransactionKey = ctx.stub.createCompositeKey(lastTransactionPrefix, [from]);
+        const lastTransactionIterator = await ctx.stub.getHistoryForKey(lastTransactionKey);
+        return this._iterateTransactionHisory(ctx, lastTransactionIterator)
+    }
+    /**
+     * Assign a donee to the ledger for validation purpose.
+     *
+     * @param {Context} ctx the transaction context.
+     * @param {String} donee the legitimate donee that will be able to receive donation transaction.
+     */
+    async AssignDonee(ctx, donee) {
+        const clientMSPID = ctx.clientIdentity.getMSPID();
+        if (clientMSPID !== 'Org1MSP') {
+            throw new Error('client is not authorized to assign new donee');
+        }
+        const doneeKey = ctx.stub.createCompositeKey(doneePrefix, [donee]);
+        const doneeExist = await ctx.stub.getState(doneeKey)
+        if (doneeExist) {
+            throw new Error('user already exist');
+        }
+        await ctx.stub.putState(doneeKey, don)
+        const transferEvent = {"status": "success"}
+        ctx.stub.setEvent('AssignDonee', Buffer.from(JSON.stringify(transferEvent)));
+    }
 
-        const iterator = await ctx.stub.getHistoryForKey(clientAccountID);
-        const results = this._getAllResults(iterator, true);
-        return  Buffer.from(JSON.stringify(results));
+    async AddDoneeCause(ctx, donee, causes) {
+        // causes parameter is a stringified array
+        const clientMSPID = ctx.clientIdentity.getMSPID();
+        if (clientMSPID !== 'Org1MSP') {
+            throw new Error('client is not authorized to assign new donee');
+        }
+        JSON.parse(causes)
+        const doneeKey = ctx.stub.createCompositeKey(doneePrefix, [donee]);
+        await ctx.putState(doneeKey, true)
     }
 
 }
