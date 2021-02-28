@@ -3,6 +3,13 @@
 /**
  * Module dependencies.
  */
+import dotenv from 'dotenv'
+import path from 'path'
+
+const result = dotenv.config({ path: path.resolve(__dirname, '../.env') })
+if (result.error) {
+  throw result.error
+}
 
 import app from '../src/app';
 import debugLib from 'debug';
