@@ -7,7 +7,7 @@ export const donationSchema = Joi.object({
     amount: Joi
         .number()
         .required(),
-    recipients: Joi
+    recipient: Joi
         .string()
         .required(),
     causes: Joi

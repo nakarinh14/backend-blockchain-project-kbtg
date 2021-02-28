@@ -3,7 +3,7 @@ import Schemas from "./validators/schemas"
 
 export default () => {
     // enabled HTTP methods for request data validation
-    const _supportedMethods = ['post'];
+    const _supportedMethods = ['get', 'post'];
 
     // return the validation middleware
     return async (req, res, next) => {
@@ -25,12 +25,11 @@ export default () => {
             res.status(422).json({
                 status: 'failed',
                 error: {
-                    original: err,
                     // fetch only message and type from each error
-                    // details: _.map(err.details, ({message, type}) => ({
-                    //     message: message.replace(/['"]/g, ''),
-                    //     type
-                    // }))
+                    details: _.map(err.details, ({message, type}) => ({
+                        message: message.replace(/['"]/g, ''),
+                        type
+                    }))
                 }
             });
         }
