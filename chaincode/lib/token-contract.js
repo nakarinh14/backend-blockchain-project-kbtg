@@ -77,6 +77,18 @@ class TokenERC20Contract extends Contract {
      * @param {String} owner The owner from which the balance will be retrieved
      * @returns {Number} Returns the account balance
      */
+
+    async GetBalance(ctx){
+        const owner = ctx.clientIdentity.getID();
+        const doneeKey = ctx.stub.createCompositeKey(doneePrefix, [owner]);
+        const doneeExist = await ctx.stub.getState(doneeKey)
+        if (doneeExist) {
+            await this.BalanceOfDonee(ctx, owner)
+        } else {
+            await this.BalanceOfDonator(ctx, owner)
+        }
+    }
+
     async BalanceOfDonator(ctx, owner) {
         const balanceKey = ctx.stub.createCompositeKey(balancePrefix, [owner]);
 
@@ -156,35 +168,13 @@ class TokenERC20Contract extends Contract {
     * @returns {Boolean} Return whether the transfer was successful or not
     */
     async DonateFrom(ctx, from, to, amount, cause) {
-        const spender = from;
-
-        // Retrieve the allowance of the spender
-        // const allowanceKey = ctx.stub.createCompositeKey(allowancePrefix, [from, spender]);
-        // const currentAllowanceBytes = await ctx.stub.getState(allowanceKey);
-
-        // if (!currentAllowanceBytes || currentAllowanceBytes.length === 0) {
-        //     throw new Error(`spender ${spender} has no allowance from ${from}`);
-        // }
-
-        // const currentAllowance = parseInt(currentAllowanceBytes.toString());
-
         // Convert value from string to int
         const amountInt = parseInt(amount);
-
-        // // Check if the transferred value is less than the allowance
-        // if (currentAllowance < valueInt) {
-        //     throw new Error('The spender does not have enough allowance to spend.');
-        // }
 
         const transferResp = await this._transfer(ctx, from, to, amount, cause);
         if (!transferResp) {
             throw new Error('Failed to transfer');
         }
-
-        // Decrease the allowance
-        // const updatedAllowance = currentAllowance - valueInt;
-        // await ctx.stub.putState(allowanceKey, Buffer.from(updatedAllowance.toString()));
-        // console.log(`spender ${spender} allowance updated from ${currentAllowance} to ${updatedAllowance}`);
 
         // Emit the Transfer event
         const transferEvent = { from, to, amount: amountInt, cause };
@@ -329,7 +319,14 @@ class TokenERC20Contract extends Contract {
      * @param {Integer} amount amount of tokens to be minted
      * @returns {Object} The balance
      */
-    async Mint(ctx, to, amount) {
+
+     async Mint(ctx, amount){
+        // Get ID of submitting client identity
+        const minter = ctx.clientIdentity.getID();
+        return await this.MintFrom(ctx, minter, amount)
+     }
+
+    async MintFrom(ctx, from, amount) {
 
         // Check minter authorization - this sample assumes Org1 is the central banker with privilege to mint new tokens
         const clientMSPID = ctx.clientIdentity.getMSPID();
@@ -338,7 +335,7 @@ class TokenERC20Contract extends Contract {
         }
 
         // Get ID of submitting client identity
-        const minter = to;
+        const minter = from;
 
         const amountInt = parseInt(amount);
         if (amountInt <= 0) {
@@ -386,19 +383,22 @@ class TokenERC20Contract extends Contract {
      * @param {Integer} amount amount of tokens to be burned
      * @returns {Object} The balance
      */
-    async Burn(ctx, owner, amount) {
+
+     async Burn(ctx, amount, cause){
+        const owner = ctx.clientIdentity.getID();
+        return await this.BurnFrom(ctx, owner, amount, cause)
+     }
+
+    async BurnFrom(ctx, owner, amount, cause) {
 
         // Check minter authorization - this sample assumes Org1 is the central banker with privilege to burn tokens
         const clientMSPID = ctx.clientIdentity.getMSPID();
         if (clientMSPID !== 'Org1MSP') {
             throw new Error('client is not authorized to mint new tokens');
         }
-
-        const minter = owner;
-
         const amountInt = parseInt(amount);
 
-        const balanceKey = ctx.stub.createCompositeKey(balancePrefix, [minter]);
+        const balanceKey = ctx.stub.createCompositeKey(balancePrefix, [owner, cause]);
 
         const currentBalanceBytes = await ctx.stub.getState(balanceKey);
         if (!currentBalanceBytes || currentBalanceBytes.length === 0) {
@@ -420,42 +420,31 @@ class TokenERC20Contract extends Contract {
         const totalSupply = parseInt(totalSupplyBytes.toString()) - amountInt;
         await ctx.stub.putState(totalSupplyKey, Buffer.from(totalSupply.toString()));
 
+        // Update transaction history
+        const from = owner;
+        const to = '0x0';
+        const value = amountInt;
+
+        const lastTransaction = Buffer.from(JSON.stringify({
+            from, to, value, cause
+        }))
+        
+        const lastTransactionFrom = ctx.stub.createCompositeKey(lastTransactionPrefix, [from])
+        const lastTransactionTo = ctx.stub.createCompositeKey(lastTransactionPrefix, [to])
+
+        // Update transaction history
+        await ctx.stub.putState(lastTransactionFrom, lastTransaction)
+        await ctx.stub.putState(lastTransactionTo, lastTransaction)
+        await ctx.stub.putState(lastGlobalTransactionKey, lastTransaction)
+
         // Emit the Transfer event
-        const transferEvent = { from: minter, to: '0x0', value: amountInt };
+        const transferEvent = { from, to: '0x0', cause, value: amountInt };
         ctx.stub.setEvent('Transfer', Buffer.from(JSON.stringify(transferEvent)));
 
-        console.log(`minter account ${minter} balance updated from ${currentBalance} to ${updatedBalance}`);
+        console.log(`minter account ${owner} balance of cause '${cause}' updated from ${currentBalance} to ${updatedBalance}`);
         return true;
     }
 
-    /**
-     * ClientAccountBalance returns the balance of the requesting client's account.
-     *
-     * @param {Context} ctx the transaction context
-     * @returns {Number} Returns the account balance
-     */
-    async ClientAccountBalance(ctx) {
-        // Get ID of submitting client identity
-        const clientAccountID = ctx.clientIdentity.getID();
-
-        const balanceKey = ctx.stub.createCompositeKey(balancePrefix, [clientAccountID]);
-        const balanceBytes = await ctx.stub.getState(balanceKey);
-        if (!balanceBytes || balanceBytes.length === 0) {
-            throw new Error(`the account ${clientAccountID} does not exist`);
-        }
-        const balance = parseInt(balanceBytes.toString());
-
-        return balance;
-    }
-
-    // ClientAccountID returns the id of the requesting client's account.
-    // In this implementation, the client account ID is the clientId itself.
-    // Users can use this function to get their own account id, which they can then give to others as the payment address
-    async ClientAccountID(ctx) {
-        // Get ID of submitting client identity
-        const clientAccountID = ctx.clientIdentity.getID();
-        return clientAccountID;
-    }
     /**
      * Helper function that helps with iterating and parsing transaction history
      *
@@ -469,8 +458,11 @@ class TokenERC20Contract extends Contract {
             const res = await iterator.next()
             const jsonRes = {}
             if(res && res.value){
-                jsonRes.tx_id = res.value.tx_id;
+                jsonRes.txId = res.value.txId;
                 jsonRes.timestamp = res.value.timestamp;
+                jsonRes.timestamp = new Date((res.value.timestamp.seconds.low * 1000));
+                let ms = res.value.timestamp.nanos / 1000000;
+                jsonRes.timestamp.setMilliseconds(ms);
                 jsonRes.data = JSON.parse(res.value.value.toString());
                 store.push(jsonRes)
             }
@@ -502,6 +494,16 @@ class TokenERC20Contract extends Contract {
         const lastTransactionIterator = await ctx.stub.getHistoryForKey(lastTransactionKey);
         return this._iterateTransactionHisory(ctx, lastTransactionIterator)
     }
+
+    async AddRole(ctx, role){
+        const clientAccountID = ctx.clientIdentity.getID();
+        const roleKey = ctx.stub.createCompositeKey(rolePrefix, [clientAccountID]);
+        const clientRole = await ctx.stub.getState(roleKey);
+        if(clientRole){
+            throw new Error('role already exist');
+        }
+        await ctx.stub.putState(roleKey, Buffer.from(role));
+    }
     /**
      * Assign a donee to the ledger for validation purpose.
      *
@@ -518,21 +520,44 @@ class TokenERC20Contract extends Contract {
         if (doneeExist) {
             throw new Error('user already exist');
         }
-        await ctx.stub.putState(doneeKey, don)
+        await ctx.stub.putState(doneeKey, true)
         const transferEvent = {"status": "success"}
         ctx.stub.setEvent('AssignDonee', Buffer.from(JSON.stringify(transferEvent)));
     }
 
     async AddDoneeCause(ctx, donee, causes) {
         // causes parameter is a stringified array
+        const parseCauses = JSON.parse(causes)
         const clientMSPID = ctx.clientIdentity.getMSPID();
         if (clientMSPID !== 'Org1MSP') {
             throw new Error('client is not authorized to assign new donee');
         }
-        JSON.parse(causes)
-        const doneeKey = ctx.stub.createCompositeKey(doneePrefix, [donee]);
-        await ctx.putState(doneeKey, true)
+        for(const cause of parseCauses){
+            const causeKey = ctx.stub.createCompositeKey(balancePrefix, [donee, cause]);
+            const causeVal = await ctx.stub.getState(causeKey)
+            if(!causeVal){
+                await ctx.stub.putState(causeKey, 0)
+            }
+        }
+        return true
     }
+
+    // async InitLedger(ctx){
+    //     const organisations = {
+    //         "Orgs1": {
+    //             causes: ["Fix Roof", "food", "utilities", "general"]
+    //         },
+    //         "Orgs2": {
+    //             causes: ["Fix Roof", "food", "utilities", "general"]
+    //         },
+    //     }
+
+    //     for(const key of Object.keys(organisations)){
+    //         const org = organisations[key];
+    //         await this.AssignDonee(ctx, key)
+    //         await this.AddDoneeCause(ctx, key, JSON.stringify(org.causes))
+    //     }
+    // }
 
 }
 

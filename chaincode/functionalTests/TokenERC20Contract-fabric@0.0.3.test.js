@@ -65,7 +65,7 @@ describe('TokenERC20Contract-fabric@0.0.3' , () => {
         it('should submit BalanceOfDonee transaction', async () => {
             // TODO: populate transaction parameters
 
-            await SmartContractUtil.submitTransaction('TokenERC20Contract', 'Mint', ["a", 100], gateway);
+            await SmartContractUtil.submitTransaction('TokenERC20Contract', 'MintFrom', ["a", 100], gateway);
             await SmartContractUtil.submitTransaction('TokenERC20Contract', 'DonateFrom', ["a", "b", 50, "general"], gateway);
             await SmartContractUtil.submitTransaction('TokenERC20Contract', 'DonateFrom', ["a", "b", 20, "roof"], gateway);
             const args = [ "b"];
@@ -83,17 +83,107 @@ describe('TokenERC20Contract-fabric@0.0.3' , () => {
     });
 
     describe('Donate', () =>{
-        it('should submit Donate transaction', async () => {
+        it('Should submit Donate transaction', async () => {
             // TODO: populate transaction parameters
-            const arg0 = 'EXAMPLE';
-            const arg1 = 'EXAMPLE';
-            const arg2 = 'EXAMPLE';
-            const args = [ arg0, arg1, arg2];
+            const arg0 = 'aa';
+            const arg1 = 'bb';
+            const arg2 = 40;
+            const arg3 = 'fixing roof'
+            const args = [ arg0, arg1, arg2, arg3];
 
-            const response = await SmartContractUtil.submitTransaction('TokenERC20Contract', 'Donate', args, gateway); // Returns buffer of transaction return value
+            await SmartContractUtil.submitTransaction('TokenERC20Contract', 'MintFrom', ["aa", 100], gateway);
+            await SmartContractUtil.submitTransaction('TokenERC20Contract', 'DonateFrom', args, gateway); // Returns buffer of transaction return value
+
+            const doneeArgs = ['bb']
+            const res = await SmartContractUtil.submitTransaction('TokenERC20Contract', 'BalanceOfDonee', doneeArgs, gateway); // Returns buffer of transaction return value
+            console.log(JSON.parse(res.toString()))
             // TODO: Update with return value of transaction
             // assert.equal(JSON.parse(response.toString()), undefined);
         }).timeout(10000);
     });
+
+    describe('Transaction History', () =>{
+        it('All history', async () => {
+            // TODO: populate transaction parameters
+        
+            const args = [];
+
+            const res = await SmartContractUtil.submitTransaction('TokenERC20Contract', 'AllTransactionHistory', args, gateway);
+            console.log(JSON.parse(res.toString()))
+            // TODO: Update with return value of transaction
+            // assert.equal(JSON.parse(response.toString()), undefined);
+        }).timeout(10000);
+
+        it('User history', async () => {
+            // TODO: populate transaction parameters
+        
+            const args = ['a'];
+
+            const res = await SmartContractUtil.submitTransaction('TokenERC20Contract', 'UserTransactionHistory', args, gateway);
+            console.log(JSON.parse(res.toString()))
+            // TODO: Update with return value of transaction
+            // assert.equal(JSON.parse(response.toString()), undefined);
+        }).timeout(10000);
+
+        it('User history', async () => {
+            // TODO: populate transaction parameters
+        
+            const args = ['aa'];
+
+            const res = await SmartContractUtil.submitTransaction('TokenERC20Contract', 'UserTransactionHistory', args, gateway);
+            console.log(JSON.parse(res.toString()))
+            // TODO: Update with return value of transaction
+            // assert.equal(JSON.parse(response.toString()), undefined);
+        }).timeout(10000);
+
+
+        it('User history', async () => {
+            // TODO: populate transaction parameters
+        
+            const args = ['b'];
+
+            const res = await SmartContractUtil.submitTransaction('TokenERC20Contract', 'UserTransactionHistory', args, gateway);
+            console.log(JSON.parse(res.toString()))
+            // TODO: Update with return value of transaction
+            // assert.equal(JSON.parse(response.toString()), undefined);
+        }).timeout(10000);
+
+        it('User history', async () => {
+            // TODO: populate transaction parameters
+        
+            const args = ['bb'];
+
+            const res = await SmartContractUtil.submitTransaction('TokenERC20Contract', 'UserTransactionHistory', args, gateway);
+            console.log(JSON.parse(res.toString()))
+            // TODO: Update with return value of transaction
+            // assert.equal(JSON.parse(response.toString()), undefined);
+        }).timeout(10000);
+    });
+
+    it('Burning and redeeming from owner', async () => {
+
+        const bal = await SmartContractUtil.submitTransaction('TokenERC20Contract', 'BalanceOfDonee', ['bb'], gateway); // Returns buffer of transaction return value
+        console.log(JSON.parse(bal.toString()))
+
+        const args =['bb',30,'fixing roof']
+        const res = await SmartContractUtil.submitTransaction('TokenERC20Contract', 'BurnFrom', args, gateway);
+        console.log(JSON.parse(res.toString()))
+
+        const bal_ = await SmartContractUtil.submitTransaction('TokenERC20Contract', 'BalanceOfDonee', ['bb'], gateway); // Returns buffer of transaction return value
+        console.log(JSON.parse(bal_.toString()))
+    })
+
+    it('Burning and redeeming from owner', async () => {
+
+        const bal = await SmartContractUtil.submitTransaction('TokenERC20Contract', 'BalanceOfDonee', ['bb'], gateway); // Returns buffer of transaction return value
+        console.log(JSON.parse(bal.toString()))
+
+        const args =['bb',30,'fixing roof']
+        const res = await SmartContractUtil.submitTransaction('TokenERC20Contract', 'BurnFrom', args, gateway);
+        console.log(JSON.parse(res.toString()))
+
+        const bal_ = await SmartContractUtil.submitTransaction('TokenERC20Contract', 'BalanceOfDonee', ['bb'], gateway); // Returns buffer of transaction return value
+        console.log(JSON.parse(bal_.toString()))
+    })
 
 });
