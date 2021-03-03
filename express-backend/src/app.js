@@ -5,9 +5,13 @@ import logger from 'morgan';
 import indexRouter from './api/routes/index';
 import authRouter from './api/routes/auth';
 import donorRouter from './api/routes/donor';
-import doneeRouter from './api/routes/donee'
+import doneeRouter from './api/routes/donee';
+import activityRouter from './api/routes/activity';
 import requestValidator from "./api/middlewares/requestValidator"
 import { isAuthenticated, isAuthorized } from "./api/middlewares/auth";
+import FabricService from "./services/fabric";
+
+FabricService.RegisterAdmin()
 
 const app = express();
 const validatorMiddleware = requestValidator();
@@ -34,6 +38,7 @@ app.use(
     isAuthorized({ hasRole: ['donee', 'beneficiary'] }),
     doneeRouter
 );
-app.use('/api/activity', validatorMiddleware)
+app.use('/api/activity', activityRouter);
+app.use('/api/balance', isAuthenticated);
 
 export default app;
