@@ -5,17 +5,54 @@ import fs from 'fs';
 import path from 'path';
 
 // load the network configuration
-const ccpPath = path.resolve(__dirname, '..', '..', 'test-network', 'organizations', 'peerOrganizations', 'org1.example.com', 'connection-org1.json');
+const ccpPath = path.resolve(__dirname, '..', '..', '..', 'fabric-samples', 'test-network', 'organizations', 'peerOrganizations', 'org1.example.com', 'connection-org1.json');
 const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
 // Create a new CA client for interacting with the CA.
-const caURL = ccp.certificateAuthorities['ca.org1.example.com'].url;
+const caInfo = ccp.certificateAuthorities['ca.org1.example.com'];
+const caURL = caInfo.url;
+const caTLSCACerts = caInfo.tlsCACerts.pem
 const ca = new FabricCAServices(caURL);
 
 export default class FabricService {
 
     static async InitUser(uid){
         await this.RegisterUser(uid);
-        await this.InitMint(uid, 40000);
+        await this.Deposit(uid, 40000);
+    }
+
+    static async RegisterAdmin(){
+        try {
+            // load the network configuration
+            const _ca = new FabricCAServices(caInfo.url, { trustedRoots: caTLSCACerts, verify: false }, caInfo.caName);
+
+            // Create a new file system based wallet for managing identities.
+            const walletPath = path.join(process.cwd(), 'wallet');
+            const wallet = await Wallets.newFileSystemWallet(walletPath);
+            console.log(`Wallet path: ${walletPath}`);
+
+            // Check to see if we've already enrolled the admin user.
+            const identity = await wallet.get('admin');
+            if (identity) {
+                console.log('An identity for the admin user "admin" already exists in the wallet');
+                return;
+            }
+
+            // Enroll the admin user, and import the new identity into the wallet.
+            const enrollment = await _ca.enroll({ enrollmentID: 'admin', enrollmentSecret: 'adminpw' });
+            const x509Identity = {
+                credentials: {
+                    certificate: enrollment.certificate,
+                    privateKey: enrollment.key.toBytes(),
+                },
+                mspId: 'Org1MSP',
+                type: 'X.509',
+            };
+            await wallet.put('admin', x509Identity);
+            console.log('Successfully enrolled admin user "admin" and imported it into the wallet');
+
+        } catch (error) {
+            console.error(`Failed to enroll admin user "admin": ${error}`);
+        }
     }
 
     static async RegisterUser(uid) {
@@ -61,6 +98,7 @@ export default class FabricService {
                 type: 'X.509',
             };
             await wallet.put(uid, x509Identity);
+
             console.log(`Successfully registered and enrolled admin user ${uid} and imported it into the wallet`);
 
         } catch (error) {
@@ -69,11 +107,11 @@ export default class FabricService {
         }
     }
 
-    static async InitMint(uid, amount){
+    static async Deposit(uid, amount){
         try {
             // Submit the specified transaction.
             const { contract, gateway } = this._connectGateway(uid)
-            await contract.submitTransaction('Mint', uid, amount);
+            await contract.submitTransaction('MintFrom', uid, amount);
             console.log('Mint has been submitted');
             // Disconnect from the gateway.
             await gateway.disconnect();
@@ -88,7 +126,7 @@ export default class FabricService {
         try {
             // Submit the specified transaction.
             const { contract, gateway } = this._connectGateway(uid_from)
-            await contract.submitTransaction('Donate', uid_from, uid_to, amount, cause);
+            await contract.submitTransaction('DonateFrom', uid_from, uid_to, amount, cause);
             console.log('Transaction has been submitted');
             // Disconnect from the gateway.
             await gateway.disconnect();
@@ -99,26 +137,101 @@ export default class FabricService {
         }
     }
 
-    static async GetBalance(uid) {
+    static async GetBalanceDonee(uid){
         try {
             // Evaluate a transaction query
             const { contract, gateway } = this._connectGateway(uid)
-            const result = await contract.evaluateTransaction('TotalSupply');
+            const result = await contract.evaluateTransaction('BalanceOfDonee', uid);
             console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
             // Disconnect from the gateway.
             await gateway.disconnect();
+            return JSON.parse(result.toString())
         } catch (error) {
             console.error(`Failed to evaluate transaction: ${error}`);
             return false
         }
     }
 
-    static async Redeem(uid, amount) {
+    static async GetBalanceDonor(uid){
+        try {
+            // Evaluate a transaction query
+            const { contract, gateway } = this._connectGateway(uid)
+            const result = await contract.evaluateTransaction('BalanceOfDonator', uid);
+            console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
+            // Disconnect from the gateway.
+            await gateway.disconnect();
+            return result
+        } catch (error) {
+            console.error(`Failed to evaluate transaction: ${error}`);
+            return false
+        }
+    }
+
+    static async GetBalance(uid) {
+        try {
+            // Evaluate a transaction query
+            const { contract, gateway } = this._connectGateway(uid)
+            const result = await contract.evaluateTransaction('GetBalance');
+            console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
+            // Disconnect from the gateway.
+            await gateway.disconnect();
+            return result
+        } catch (error) {
+            console.error(`Failed to evaluate transaction: ${error}`);
+            return false
+        }
+    }
+
+    static async Redeem(uid, amount, cause) {
         try {
             // Submit the specified transaction.
             const { contract, gateway } = this._connectGateway(uid)
-            await contract.submitTransaction('Burn', uid, amount);
+            await contract.submitTransaction('BurnFrom', uid, amount, cause);
             console.log('Transaction has been submitted');
+            // Disconnect from the gateway.
+            await gateway.disconnect();
+            return true
+        } catch (err) {
+            console.error(`Failed to submit transaction: ${err}`);
+            return false
+        }
+    }
+
+    static async GetAllTransactionHistory(){
+        try {
+            // Evaluate a transaction query
+            const { contract, gateway } = this._connectGateway('admin')
+            const result = await contract.evaluateTransaction('AllTransactionHistory');
+            console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
+            // Disconnect from the gateway.
+            await gateway.disconnect();
+            return JSON.parse(result.toString())
+        } catch (error) {
+            console.error(`Failed to evaluate transaction: ${error}`);
+            return false
+        }
+    }
+
+    static async GetTransactionHistory(uid){
+        try {
+            // Evaluate a transaction query
+            const { contract, gateway } = this._connectGateway('admin')
+            const result = await contract.evaluateTransaction('UserTransactionHistory', uid);
+            console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
+            // Disconnect from the gateway.
+            await gateway.disconnect();
+            return JSON.parse(result.toString())
+        } catch (error) {
+            console.error(`Failed to evaluate transaction: ${error}`);
+            return false
+        }
+    }
+
+    static async AssignDonee(uid){
+        try {
+            // Submit the specified transaction.
+            const { contract, gateway } = this._connectGateway(uid)
+            await contract.submitTransaction('AssignDonee', uid);
             // Disconnect from the gateway.
             await gateway.disconnect();
             return true
@@ -141,13 +254,18 @@ export default class FabricService {
         }
         // Create a new gateway for connecting to our peer node.
         const gateway = new Gateway();
-        await gateway.connect(ccp, { wallet, identity: user, discovery: { enabled: true, asLocalhost: true } });
+        await gateway.connect(ccp,
+            {
+                wallet,
+                identity: user,
+                discovery: { enabled: true, asLocalhost: true }
+            });
 
         // Get the network (channel) our contract is deployed to.
         const network = await gateway.getNetwork('mychannel');
 
         // Get the contract from the network.
-        const contract = network.getContract('ktw');
+        const contract = network.getContract('ktw-coin');
         return {contract, gateway}
 
     }
