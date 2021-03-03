@@ -10,7 +10,7 @@ export const registerSchema = Joi.object({
         .string()
         .required(),
     phone: Joi
-        .alphanum()
+        .string()
         .required(),
     national_id: Joi
         .number()

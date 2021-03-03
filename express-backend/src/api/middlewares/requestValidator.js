@@ -1,9 +1,9 @@
 import _ from 'lodash'
-import Schemas from "./validators/schemas"
+import Schemas from "./schemas"
 
 export default () => {
     // enabled HTTP methods for request data validation
-    const _supportedMethods = ['get', 'post'];
+    const _supportedMethods = ['post'];
 
     // return the validation middleware
     return async (req, res, next) => {
