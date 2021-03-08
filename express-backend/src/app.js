@@ -9,9 +9,12 @@ import doneeRouter from './api/routes/donee';
 import activityRouter from './api/routes/activity';
 import requestValidator from "./api/middlewares/requestValidator"
 import { isAuthenticated, isAuthorized } from "./api/middlewares/auth";
-import FabricService from "./services/fabric";
+import CertificateService from './services/pdf'
 
-FabricService.RegisterAdmin()
+// CertificateService.generateCertificate("YEe haw", "ASD ASD", "500", "Aug 20, 2021")
+// import FabricService from "./services/fabric";
+// FabricService.RegisterAdmin()
+
 
 const app = express();
 const validatorMiddleware = requestValidator();

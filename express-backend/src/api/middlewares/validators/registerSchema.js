@@ -9,10 +9,4 @@ export const registerSchema = Joi.object({
     lastname: Joi
         .string()
         .required(),
-    phone: Joi
-        .string()
-        .required(),
-    national_id: Joi
-        .number()
-        .required()
 })

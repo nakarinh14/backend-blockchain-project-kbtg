@@ -1,4 +1,3 @@
-
 import {Gateway, Wallets} from 'fabric-network';
 import FabricCAServices from 'fabric-ca-client';
 import fs from 'fs';
