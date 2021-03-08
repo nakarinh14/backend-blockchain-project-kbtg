@@ -5,7 +5,7 @@ firebase-admin-pk.json
 .DS_Store*
 Icon?
 ._*
-
+wallet/
 # Windows
 Thumbs.db
 ehthumbs.db
