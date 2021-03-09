@@ -2,7 +2,7 @@
 import KBankTransactionService from "../../services/transaction";
 import { Router } from 'express'
 import FabricService from "../../services/fabric";
-
+import CertificateService from "../../services/pdf";
 const router = Router();
 
 router.post('/deposit', async (req, res) => {
@@ -17,12 +17,13 @@ router.post('/deposit', async (req, res) => {
 
 router.post('/donate', async (req, res) => {
     try{
-        const donateStatus = FabricService.Donate(
+        const donateStatus = await FabricService.Donate(
             res.locals.uid,
             req.body.recipient,
             req.body.amount,
             req.body.cause
         )
+        // CertificateService.generateCertificate(req req.body.amount)
         if(donateStatus){
             res.send({"status": "success"})
         }

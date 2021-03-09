@@ -14,6 +14,86 @@ const ca = new FabricCAServices(caURL);
 
 export default class FabricService {
 
+    static async Deposit(uid, amount){
+        // Submit the specified transaction.
+        await this.executeTransaction(uid, false, 'MintFrom', [uid, amount])
+        console.log('Mint has been submitted');
+        return true
+    }
+
+    static async Donate(uid_from, uid_to, amount, cause) {
+
+        // Submit the specified transaction.
+        console.log(`${uid_from} donating to ${uid_to} for ${amount} to ${cause} cause`)
+        await this.executeTransaction(
+            uid_from, false, 'DonateFrom', [uid_from, uid_to, amount, cause]
+        );
+        console.log('Donation has been submitted');
+        return true
+
+    }
+
+    static async GetBalanceDonee(uid){
+        // Evaluate a transaction query
+        const res = this.executeTransaction(uid, true, 'BalanceOfDonee', [uid])
+        return JSON.parse(res.toString())
+    }
+
+    static async GetBalanceDonor(uid){
+        try {
+            // Evaluate a transaction query
+            const { contract, gateway } = this.executeTransaction(uid)
+            const result = await contract.evaluateTransaction('BalanceOfDonator', uid);
+            console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
+            // Disconnect from the gateway.
+            await gateway.disconnect();
+            return result
+        } catch (error) {
+            console.error(`Failed to evaluate transaction: ${error}`);
+            return false
+        }
+    }
+
+    static async GetBalance(uid) {
+        // Evaluate a transaction query
+        const res = await this.executeTransaction(uid, true, 'GetBalance')
+        console.log(`GetBalance from ${uid} has been evaluated, with balance of ${res.toString()}`);
+        // Disconnect from the gateway.
+        return res.toString()
+    }
+
+    static async Redeem(uid, amount, cause) {
+        // Submit the specified transaction.
+        const res = await this.executeTransaction(
+            uid, false, 'BurnFrom', [uid, amount, cause]
+        )
+        console.log(`Redeem is successful on ${uid}`);
+        // Disconnect from the gateway.
+        return true
+    }
+
+    static async GetAllTransactionHistory(){
+
+        // Evaluate a transaction query
+        const res = await this.executeTransaction('admin', true, 'AllTransactionHistory')
+        return JSON.parse(res.toString())
+
+    }
+
+    static async GetTransactionHistory(uid){
+        // Evaluate a transaction query
+        const result = await this.executeTransaction(
+            'admin', true, 'UserTransactionHistory', [uid]
+        )
+        return JSON.parse(result.toString())
+
+    }
+
+    static async AssignDonee(uid){
+        // Submit the specified transaction.
+        const res = this.executeTransaction(uid, false, 'AssignDonee', [uid])
+        return true;
+    }
     static async InitUser(uid){
         await this.RegisterUser(uid);
         await this.Deposit(uid, 40000);
@@ -98,7 +178,7 @@ export default class FabricService {
             };
             await wallet.put(uid, x509Identity);
 
-            console.log(`Successfully registered and enrolled admin user ${uid} and imported it into the wallet`);
+            console.log(`Successfully registered and enrolled client user ${uid} and imported it into the wallet`);
 
         } catch (error) {
             console.error(`Failed to register user "${uid}": ${error}`);
@@ -106,141 +186,7 @@ export default class FabricService {
         }
     }
 
-    static async Deposit(uid, amount){
-        try {
-            // Submit the specified transaction.
-            const { contract, gateway } = this._connectGateway(uid)
-            await contract.submitTransaction('MintFrom', uid, amount);
-            console.log('Mint has been submitted');
-            // Disconnect from the gateway.
-            await gateway.disconnect();
-            return true
-        } catch (err) {
-            console.error(`Failed to submit transaction: ${err}`);
-            return false
-        }
-    }
-
-    static async Donate(uid_from, uid_to, amount, cause) {
-        try {
-            // Submit the specified transaction.
-            const { contract, gateway } = this._connectGateway(uid_from)
-            await contract.submitTransaction('DonateFrom', uid_from, uid_to, amount, cause);
-            console.log('Transaction has been submitted');
-            // Disconnect from the gateway.
-            await gateway.disconnect();
-            return true
-        } catch (err) {
-            console.error(`Failed to submit transaction: ${err}`);
-            return false
-        }
-    }
-
-    static async GetBalanceDonee(uid){
-        try {
-            // Evaluate a transaction query
-            const { contract, gateway } = this._connectGateway(uid)
-            const result = await contract.evaluateTransaction('BalanceOfDonee', uid);
-            console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
-            // Disconnect from the gateway.
-            await gateway.disconnect();
-            return JSON.parse(result.toString())
-        } catch (error) {
-            console.error(`Failed to evaluate transaction: ${error}`);
-            return false
-        }
-    }
-
-    static async GetBalanceDonor(uid){
-        try {
-            // Evaluate a transaction query
-            const { contract, gateway } = this._connectGateway(uid)
-            const result = await contract.evaluateTransaction('BalanceOfDonator', uid);
-            console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
-            // Disconnect from the gateway.
-            await gateway.disconnect();
-            return result
-        } catch (error) {
-            console.error(`Failed to evaluate transaction: ${error}`);
-            return false
-        }
-    }
-
-    static async GetBalance(uid) {
-        try {
-            // Evaluate a transaction query
-            const { contract, gateway } = this._connectGateway(uid)
-            const result = await contract.evaluateTransaction('GetBalance');
-            console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
-            // Disconnect from the gateway.
-            await gateway.disconnect();
-            return result
-        } catch (error) {
-            console.error(`Failed to evaluate transaction: ${error}`);
-            return false
-        }
-    }
-
-    static async Redeem(uid, amount, cause) {
-        try {
-            // Submit the specified transaction.
-            const { contract, gateway } = this._connectGateway(uid)
-            await contract.submitTransaction('BurnFrom', uid, amount, cause);
-            console.log('Transaction has been submitted');
-            // Disconnect from the gateway.
-            await gateway.disconnect();
-            return true
-        } catch (err) {
-            console.error(`Failed to submit transaction: ${err}`);
-            return false
-        }
-    }
-
-    static async GetAllTransactionHistory(){
-        try {
-            // Evaluate a transaction query
-            const { contract, gateway } = this._connectGateway('admin')
-            const result = await contract.evaluateTransaction('AllTransactionHistory');
-            console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
-            // Disconnect from the gateway.
-            await gateway.disconnect();
-            return JSON.parse(result.toString())
-        } catch (error) {
-            console.error(`Failed to evaluate transaction: ${error}`);
-            return false
-        }
-    }
-
-    static async GetTransactionHistory(uid){
-        try {
-            // Evaluate a transaction query
-            const { contract, gateway } = this._connectGateway('admin')
-            const result = await contract.evaluateTransaction('UserTransactionHistory', uid);
-            console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
-            // Disconnect from the gateway.
-            await gateway.disconnect();
-            return JSON.parse(result.toString())
-        } catch (error) {
-            console.error(`Failed to evaluate transaction: ${error}`);
-            return false
-        }
-    }
-
-    static async AssignDonee(uid){
-        try {
-            // Submit the specified transaction.
-            const { contract, gateway } = this._connectGateway(uid)
-            await contract.submitTransaction('AssignDonee', uid);
-            // Disconnect from the gateway.
-            await gateway.disconnect();
-            return true
-        } catch (err) {
-            console.error(`Failed to submit transaction: ${err}`);
-            return false
-        }
-    }
-
-    static async _connectGateway(user) {
+    static async executeTransaction(user, evaluateOnly, funcName, args) {
         // Create a new file system based wallet for managing identities.
         const walletPath = path.join(process.cwd(), 'wallet');
         const wallet = await Wallets.newFileSystemWallet(walletPath);
@@ -265,8 +211,16 @@ export default class FabricService {
 
         // Get the contract from the network.
         const contract = network.getContract('ktw-coin');
-        return {contract, gateway}
 
+        let res;
+        if(!evaluateOnly){
+            res = await contract.submitTransaction(funcName, ...args);
+        } else {
+            res = await contract.evaluateTransaction(funcName, ...args);
+        }
+        await gateway.disconnect();
+
+        return res;
     }
 
 }

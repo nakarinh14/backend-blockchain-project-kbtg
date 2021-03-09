@@ -26,13 +26,16 @@ export default class AuthService {
             // If user already exist, throw an error
             throw new Error('User profile already exist');
         }
-        await ref.set(data)
+        await ref.set({
+            firstname: data.firstname,
+            lastname: data.lastname
+        })
     }
 
     static async _addRole(uid, role) {
         // If the existing user have no role, add the role to customClaims
         const userRecord = await admin.auth().getUser(uid)
-        if(!userRecord.customClaims['role']){
+        if(!userRecord.customClaims || !userRecord.customClaims['role']){
             await admin.auth().setCustomUserClaims(uid, {role})
         }
     }

@@ -4,10 +4,10 @@ import AuthService from "../../services/auth";
 
 const router = express.Router();
 
-router.get('/register', async (req, res) => {
+router.post('/register', async (req, res) => {
     try {
         // User account have be to registered first
-        const { uid } = res.locals.uid
+        const { uid } = res.locals
         // Initialize user profile of the authenticated user
         await AuthService.InitUser(uid, req.body);
         // Register the authenticated uid user to blockchain network
