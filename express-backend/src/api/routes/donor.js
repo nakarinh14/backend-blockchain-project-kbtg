@@ -7,7 +7,7 @@ const router = Router();
 
 router.post('/deposit', async (req, res) => {
     try{
-        const withdrawResponse = await KBankTransactionService.Withdraw(req.body);
+        // const withdrawResponse = await KBankTransactionService.Withdraw(req.body);
         await FabricService.Deposit(res.locals.uid, req.body.amount)
         res.send({"status": "success"});
     } catch (err) {
@@ -23,11 +23,12 @@ router.post('/donate', async (req, res) => {
             req.body.amount,
             req.body.cause
         )
-        // CertificateService.generateCertificate(req req.body.amount)
-        if(donateStatus){
-            res.send({"status": "success"})
-        }
+        console.log(donateStatus)
+        await CertificateService.generateCertificate(donateStatus)
+
+        res.send({result: donateStatus})
     } catch (err){
+        console.log(err)
         res.status(400).send({error: err})
     }
 })

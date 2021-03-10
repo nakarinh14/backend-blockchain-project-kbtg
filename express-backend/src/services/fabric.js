@@ -16,8 +16,8 @@ export default class FabricService {
 
     static async Deposit(uid, amount){
         // Submit the specified transaction.
-        await this.executeTransaction(uid, false, 'MintFrom', [uid, amount])
-        console.log('Mint has been submitted');
+        await this.executeTransaction(uid, false, 'MintFrom', [uid, parseInt(amount)])
+        console.log(`Mint has been submitted for ${uid} with amount ${amount}`);
         return true
     }
 
@@ -25,11 +25,11 @@ export default class FabricService {
 
         // Submit the specified transaction.
         console.log(`${uid_from} donating to ${uid_to} for ${amount} to ${cause} cause`)
-        await this.executeTransaction(
+        const res = await this.executeTransaction(
             uid_from, false, 'DonateFrom', [uid_from, uid_to, amount, cause]
         );
         console.log('Donation has been submitted');
-        return true
+        return JSON.parse(res.toString())
 
     }
 
@@ -40,23 +40,13 @@ export default class FabricService {
     }
 
     static async GetBalanceDonor(uid){
-        try {
-            // Evaluate a transaction query
-            const { contract, gateway } = this.executeTransaction(uid)
-            const result = await contract.evaluateTransaction('BalanceOfDonator', uid);
-            console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
-            // Disconnect from the gateway.
-            await gateway.disconnect();
-            return result
-        } catch (error) {
-            console.error(`Failed to evaluate transaction: ${error}`);
-            return false
-        }
+        const res = await this.executeTransaction(uid, true, 'BalanceOfDonator', [uid])
+        return res.toString()
     }
 
     static async GetBalance(uid) {
         // Evaluate a transaction query
-        const res = await this.executeTransaction(uid, true, 'GetBalance')
+        const res = await this.executeTransaction(uid, true, 'GetBalance', [])
         console.log(`GetBalance from ${uid} has been evaluated, with balance of ${res.toString()}`);
         // Disconnect from the gateway.
         return res.toString()
@@ -73,11 +63,9 @@ export default class FabricService {
     }
 
     static async GetAllTransactionHistory(){
-
         // Evaluate a transaction query
-        const res = await this.executeTransaction('admin', true, 'AllTransactionHistory')
+        const res = await this.executeTransaction('admin', true, 'AllTransactionHistory', [])
         return JSON.parse(res.toString())
-
     }
 
     static async GetTransactionHistory(uid){
@@ -86,7 +74,6 @@ export default class FabricService {
             'admin', true, 'UserTransactionHistory', [uid]
         )
         return JSON.parse(result.toString())
-
     }
 
     static async AssignDonee(uid){
@@ -94,9 +81,10 @@ export default class FabricService {
         const res = this.executeTransaction(uid, false, 'AssignDonee', [uid])
         return true;
     }
+
     static async InitUser(uid){
         await this.RegisterUser(uid);
-        await this.Deposit(uid, 40000);
+        // await this.Deposit(uid, 40000);
     }
 
     static async RegisterAdmin(){

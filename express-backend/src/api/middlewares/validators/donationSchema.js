@@ -12,5 +12,8 @@ export const donationSchema = Joi.object({
         .required(),
     cause: Joi
         .string()
+        .required(),
+    tax_reduction: Joi
+        .bool()
         .required()
 })

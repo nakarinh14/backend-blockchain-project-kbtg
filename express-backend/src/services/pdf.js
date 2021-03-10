@@ -81,25 +81,28 @@ export default class CertificateService {
             });
     }
 
-    static async generateCertificate(donor, recipient, amount, timestamp) {
+    static async generateCertificate(donateStatus) {
+        // Parse data
+        const timestamp = new Date(donateStatus.timestamp);
+        const snapshot = await admin.database().ref(`users/${donateStatus.from}`).once('value');
+        const userRecord = snapshot.val();
+        const fullName = `${userRecord.firstname} ${userRecord.lastname}`
 
+        // Initiate bucket
         const bucket = admin.storage().bucket()
-        const file = bucket.file('test/output.pdf');
+        const file = bucket.file(`${donateStatus.txId}.pdf`);
+
         const bucketFileStream = file.createWriteStream();
 
         const doc = new PDFDocument({
             layout: 'landscape',
             size: 'A4',
         });
-
         // Pipe its output to the bucket
-
         doc.pipe(bucketFileStream);
-
-        await this._writeContent(doc, donor, recipient, amount, timestamp)
-
+        await this._writeContent(doc, fullName, donateStatus.to, donateStatus.amount, timestamp.toDateString())
         doc.end();
-
+        console.log("Finish PDF File Stream")
     }
 
 }

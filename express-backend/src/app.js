@@ -3,15 +3,15 @@ import path from 'path';
 import cookieParser from 'cookie-parser';
 import logger from 'morgan';
 import cors from 'cors'
+// Import routers and middleware
 import indexRouter from './api/routes/index';
 import authRouter from './api/routes/auth';
 import donorRouter from './api/routes/donor';
 import doneeRouter from './api/routes/donee';
+import balanceRouter from './api/routes/balance';
 import activityRouter from './api/routes/activity';
 import requestValidator from "./api/middlewares/requestValidator"
 import { isAuthenticated, isAuthorized } from "./api/middlewares/auth";
-import CertificateService from './services/pdf'
-// CertificateService.generateCertificate("YEe haw", "ASD ASD", "500", "Aug 20, 2021")
 
 // Initialize fabric admin
 import FabricService from "./services/fabric";
@@ -50,6 +50,6 @@ app.use(
     doneeRouter
 );
 app.use('/api/activity', activityRouter);
-app.use('/api/balance', isAuthenticated);
+app.use('/api/balance', isAuthenticated, balanceRouter);
 
 export default app;

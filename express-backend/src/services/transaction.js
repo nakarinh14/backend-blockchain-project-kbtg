@@ -20,7 +20,7 @@ export default class KBankTransactionService {
             return response.body['access_token']
         } catch (err) {
             console.log(err)
-            return "nope"
+            return true
         }
     }
 
@@ -37,6 +37,7 @@ export default class KBankTransactionService {
             })
         } catch (err) {
             console.log(err)
+            return true
         }
     }
 
@@ -66,7 +67,7 @@ export default class KBankTransactionService {
             return await this.AuthGuardedRequest(url, body)
         } catch (err) {
             console.log(err)
-            return {"status": "success"}
+            return true
         }
     }
 
@@ -91,7 +92,7 @@ export default class KBankTransactionService {
                     "receivingBankCode": "004",
                     "receivingCntyCode": "TH",
                     "txnAmount": transaction.amount,
-                    "txnCurrencyCode": transaction.currency,
+                    "txnCurrencyCode": transaction.currencyType,
                     "receivingAcctType": "004",
                     "receivingAcctId": "0033991118",
                     "receivingEmail": "john.smith@gmail.com",
@@ -104,7 +105,7 @@ export default class KBankTransactionService {
             }
             return await this.AuthGuardedRequest(url, body)
         } catch (err) {
-            return {"status": "success"}
+            return true
         }
     }
 
