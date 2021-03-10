@@ -83,9 +83,9 @@ class TokenERC20Contract extends Contract {
         const doneeKey = ctx.stub.createCompositeKey(doneePrefix, [owner]);
         const doneeExist = await ctx.stub.getState(doneeKey)
         if (doneeExist) {
-            await this.BalanceOfDonee(ctx, owner)
+            return await this.BalanceOfDonee(ctx, owner)
         } else {
-            await this.BalanceOfDonator(ctx, owner)
+            return await this.BalanceOfDonator(ctx, owner)
         }
     }
 
@@ -152,10 +152,17 @@ class TokenERC20Contract extends Contract {
         }
 
         // Emit the Transfer event
-        const transferEvent = { from, to, amount: parseInt(value) };
+        const transferEvent = { from, to, amount: parseInt(value), cause };
         ctx.stub.setEvent('Transfer', Buffer.from(JSON.stringify(transferEvent)));
-
-        return true;
+        const txTimestamp = ctx.stub.getTxTimestamp()
+        let timestamp = new Date((txTimestamp.seconds.low * 1000));
+        let ms = txTimestamp.nanos / 1000000;
+        timestamp.setMilliseconds(ms);
+        return {
+            ...transferEvent,
+            txId: ctx.stub.getTxID(), 
+            timestamp, 
+        };
     }
 
     /**
@@ -179,9 +186,16 @@ class TokenERC20Contract extends Contract {
         // Emit the Transfer event
         const transferEvent = { from, to, amount: amountInt, cause };
         ctx.stub.setEvent('Transfer', Buffer.from(JSON.stringify(transferEvent)));
-
-        console.log('transferFrom ended successfully');
-        return true;
+        const txTimestamp = ctx.stub.getTxTimestamp()
+        let timestamp = new Date((txTimestamp.seconds.low * 1000));
+        let ms = txTimestamp.nanos / 1000000;
+        timestamp.setMilliseconds(ms);
+        console.log('donateFrom ended successfully');
+        return  {
+            ...transferEvent,
+            txId: ctx.stub.getTxID(), 
+            timestamp: timestamp, 
+        };
     }
 
     async _transfer(ctx, from, to, value, cause) {
@@ -452,7 +466,7 @@ class TokenERC20Contract extends Contract {
      * @param {Integer} iterator the HistoryIterator iterator.
      * @returns {Array} Return the array of parsed history object.
      */
-    async _iterateTransactionHisory(ctx, iterator) {
+    async _iterateTransactionHistory(ctx, iterator) {
         const store = []
         while(true) {
             const res = await iterator.next()
@@ -480,7 +494,7 @@ class TokenERC20Contract extends Contract {
      */
     async AllTransactionHistory(ctx) {
         const lastTransactionIterator = await ctx.stub.getHistoryForKey(lastGlobalTransactionKey)
-        return this._iterateTransactionHisory(ctx, lastTransactionIterator)
+        return this._iterateTransactionHistory(ctx, lastTransactionIterator)
     }
     /**
      * Get history of all donation transaction of a user.
@@ -492,7 +506,7 @@ class TokenERC20Contract extends Contract {
     async UserTransactionHistory(ctx, from) {
         const lastTransactionKey = ctx.stub.createCompositeKey(lastTransactionPrefix, [from]);
         const lastTransactionIterator = await ctx.stub.getHistoryForKey(lastTransactionKey);
-        return this._iterateTransactionHisory(ctx, lastTransactionIterator)
+        return this._iterateTransactionHistory(ctx, lastTransactionIterator)
     }
 
     async AddRole(ctx, role){
