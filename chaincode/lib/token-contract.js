@@ -17,6 +17,25 @@ const symbolKey = 'symbol';
 const decimalsKey = 'decimals';
 const totalSupplyKey = 'totalSupply';
 const lastGlobalTransactionKey = 'lastGlobalTransaction'
+// Dealing with decimals
+const decimalPlace = 2 // multiple/divide related to 2 decimal place
+const decimalPower = Math.pow(10, decimalPlace) 
+
+// Helper functions
+function _convertDecimalToInt(num){
+    return (parseFloat(num) * decimalPower).toFixed()
+}
+
+function _convertIntToDecimal(num){
+    return (parseFloat(num) / decimalPower).toFixed(decimalPlace)
+}
+
+function parseDateTime(datetime){
+    let timestamp = new Date((datetime.seconds.low * 1000));
+    let ms = datetime.nanos / 1000000;
+    timestamp.setMilliseconds(ms);
+    return timestamp
+}
 
 class TokenERC20Contract extends Contract {
 
@@ -58,6 +77,7 @@ class TokenERC20Contract extends Contract {
         return decimals;
     }
 
+  
     /**
      * Return the total token supply.
      *
@@ -96,7 +116,7 @@ class TokenERC20Contract extends Contract {
         if (!balanceBytes || balanceBytes.length === 0) {
             throw new Error(`the account ${owner} does not exist`);
         }
-        const balance = parseInt(balanceBytes.toString());
+        const balance = _convertIntToDecimal(balanceBytes.toString());
 
         return balance;
     }
@@ -123,10 +143,11 @@ class TokenERC20Contract extends Contract {
 
                 const donationCause = attributes[1];
    
-                balanceObject["causes"][donationCause] = balance
+                balanceObject["causes"][donationCause] = _convertIntToDecimal(balance)
                 balanceObject['total_balance'] += balance
             }
             if(responseRange.done){
+                balanceObject['total_balance'] = _convertIntToDecimal(balanceObject['total_balance'])
                 balanceIterator.close()
                 return balanceObject
             }
@@ -143,21 +164,18 @@ class TokenERC20Contract extends Contract {
      * @param {String} area The area of the donation
      * @returns {Boolean} Return whether the transfer was successful or not
      */
-    async Donate(ctx, to, amount, cause) {
+    async Donate(ctx, to, amount, cause, tax_reduction) {
         const from = ctx.clientIdentity.getID();
 
-        const transferResp = await this._transfer(ctx, from, to, amount, cause);
+        const transferResp = await this._transfer(ctx, from, to, amount, cause, tax_reduction);
         if (!transferResp) {
             throw new Error('Failed to transfer');
         }
 
         // Emit the Transfer event
-        const transferEvent = { from, to, amount: parseInt(value), cause };
+        const transferEvent = { from, to, amount: parseInt(value), cause, tax_reduction };
         ctx.stub.setEvent('Transfer', Buffer.from(JSON.stringify(transferEvent)));
-        const txTimestamp = ctx.stub.getTxTimestamp()
-        let timestamp = new Date((txTimestamp.seconds.low * 1000));
-        let ms = txTimestamp.nanos / 1000000;
-        timestamp.setMilliseconds(ms);
+        const timestamp = parseDateTime(ctx.stub.getTxTimestamp())
         return {
             ...transferEvent,
             txId: ctx.stub.getTxID(), 
@@ -174,34 +192,29 @@ class TokenERC20Contract extends Contract {
     * @param {Integer} value The amount of token to be transferred
     * @returns {Boolean} Return whether the transfer was successful or not
     */
-    async DonateFrom(ctx, from, to, amount, cause) {
+    async DonateFrom(ctx, from, to, amount, cause, tax_reduction) {
         // Convert value from string to int
-        const amountInt = parseInt(amount);
-
-        const transferResp = await this._transfer(ctx, from, to, amount, cause);
+        const transferResp = await this._transfer(ctx, from, to, amount, cause, tax_reduction);
         if (!transferResp) {
             throw new Error('Failed to transfer');
         }
 
         // Emit the Transfer event
-        const transferEvent = { from, to, amount: amountInt, cause };
+        const transferEvent = { from, to, amount, cause, tax_reduction };
         ctx.stub.setEvent('Transfer', Buffer.from(JSON.stringify(transferEvent)));
-        const txTimestamp = ctx.stub.getTxTimestamp()
-        let timestamp = new Date((txTimestamp.seconds.low * 1000));
-        let ms = txTimestamp.nanos / 1000000;
-        timestamp.setMilliseconds(ms);
+        const timestamp = parseDateTime(ctx.stub.getTxTimestamp())
         console.log('donateFrom ended successfully');
         return  {
             ...transferEvent,
             txId: ctx.stub.getTxID(), 
-            timestamp: timestamp, 
+            timestamp, 
         };
     }
 
-    async _transfer(ctx, from, to, value, cause) {
+    async _transfer(ctx, from, to, value, cause, tax_reduction) {
 
         // Convert value from string to int
-        const valueInt = parseInt(value);
+        const valueInt = parseInt(_convertDecimalToInt(value));
 
         if (valueInt < 0) { // transfer of 0 is allowed in ERC20, so just validate against negative amounts
             throw new Error('transfer amount cannot be negative');
@@ -241,7 +254,7 @@ class TokenERC20Contract extends Contract {
         // Add transaction history
 
         const lastTransaction = Buffer.from(JSON.stringify({
-            from, to, value, cause
+            from, to, value, cause, tax_reduction
         }))
         
         const lastTransactionFrom = ctx.stub.createCompositeKey(lastTransactionPrefix, [from])
@@ -351,8 +364,8 @@ class TokenERC20Contract extends Contract {
         // Get ID of submitting client identity
         const minter = from;
 
-        const amountInt = parseInt(amount);
-        if (amountInt <= 0) {
+        const amountInt = parseInt(_convertDecimalToInt(amount));
+        if (amountInt < 0) {
             throw new Error('mint amount must be a positive integer');
         }
 
@@ -473,10 +486,7 @@ class TokenERC20Contract extends Contract {
             const jsonRes = {}
             if(res && res.value){
                 jsonRes.txId = res.value.txId;
-                jsonRes.timestamp = res.value.timestamp;
-                jsonRes.timestamp = new Date((res.value.timestamp.seconds.low * 1000));
-                let ms = res.value.timestamp.nanos / 1000000;
-                jsonRes.timestamp.setMilliseconds(ms);
+                jsonRes.timestamp = parseDateTime(res.value.timestamp);
                 jsonRes.data = JSON.parse(res.value.value.toString());
                 store.push(jsonRes)
             }
@@ -555,24 +565,6 @@ class TokenERC20Contract extends Contract {
         }
         return true
     }
-
-    // async InitLedger(ctx){
-    //     const organisations = {
-    //         "Orgs1": {
-    //             causes: ["Fix Roof", "food", "utilities", "general"]
-    //         },
-    //         "Orgs2": {
-    //             causes: ["Fix Roof", "food", "utilities", "general"]
-    //         },
-    //     }
-
-    //     for(const key of Object.keys(organisations)){
-    //         const org = organisations[key];
-    //         await this.AssignDonee(ctx, key)
-    //         await this.AddDoneeCause(ctx, key, JSON.stringify(org.causes))
-    //     }
-    // }
-
 }
 
 module.exports = TokenERC20Contract;
