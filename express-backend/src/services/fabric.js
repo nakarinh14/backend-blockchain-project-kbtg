@@ -25,30 +25,17 @@ export default class FabricService {
 
         // Submit the specified transaction.
         console.log(`${uid_from} donating to ${uid_to} for ${amount} to ${cause} cause`)
+        // Parse value amount in 2 decimal float for visual consistency
         const res = await this.executeTransaction(
-            uid_from, false, 'DonateFrom', [uid_from, uid_to, amount, cause, tax_reduction]
+            uid_from, false, 'DonateFrom', [uid_from, uid_to, parseFloat(amount).toFixed(2), cause, tax_reduction]
         );
         console.log('Donation has been submitted');
         return JSON.parse(res.toString())
 
     }
 
-    static async GetBalanceDonee(uid){
-        // Evaluate a transaction query
-        const res = this.executeTransaction(uid, true, 'BalanceOfDonee', [uid])
-        return JSON.parse(res.toString())
-    }
-
     static async GetBalanceDonor(uid){
         const res = await this.executeTransaction(uid, true, 'BalanceOfDonator', [uid])
-        return res.toString()
-    }
-
-    static async GetBalance(uid) {
-        // Evaluate a transaction query
-        const res = await this.executeTransaction(uid, true, 'GetBalance', [])
-        console.log(`GetBalance from ${uid} has been evaluated, with balance of ${res.toString()}`);
-        // Disconnect from the gateway.
         return res.toString()
     }
 
@@ -74,12 +61,6 @@ export default class FabricService {
             'admin', true, 'UserTransactionHistory', [uid]
         )
         return JSON.parse(result.toString())
-    }
-
-    static async AssignDonee(uid){
-        // Submit the specified transaction.
-        const res = this.executeTransaction(uid, false, 'AssignDonee', [uid])
-        return true;
     }
 
     static async InitUser(uid){
