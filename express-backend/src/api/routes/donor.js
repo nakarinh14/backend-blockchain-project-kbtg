@@ -21,11 +21,13 @@ router.post('/donate', async (req, res) => {
             res.locals.uid,
             req.body.recipient,
             req.body.amount,
-            req.body.cause
+            req.body.cause,
+            req.body.tax_reduction
         )
-        console.log(donateStatus)
-        await CertificateService.generateCertificate(donateStatus)
-
+        // If user don't want tax reduction, don't generate a certificate for it
+        if(req.body.tax_reduction){
+            await CertificateService.generateCertificate(donateStatus)
+        }
         res.send({result: donateStatus})
     } catch (err){
         console.log(err)

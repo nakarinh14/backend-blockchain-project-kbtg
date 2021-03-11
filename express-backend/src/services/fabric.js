@@ -16,17 +16,17 @@ export default class FabricService {
 
     static async Deposit(uid, amount){
         // Submit the specified transaction.
-        await this.executeTransaction(uid, false, 'MintFrom', [uid, parseInt(amount)])
+        await this.executeTransaction(uid, false, 'MintFrom', [uid, amount])
         console.log(`Mint has been submitted for ${uid} with amount ${amount}`);
         return true
     }
 
-    static async Donate(uid_from, uid_to, amount, cause) {
+    static async Donate(uid_from, uid_to, amount, cause, tax_reduction) {
 
         // Submit the specified transaction.
         console.log(`${uid_from} donating to ${uid_to} for ${amount} to ${cause} cause`)
         const res = await this.executeTransaction(
-            uid_from, false, 'DonateFrom', [uid_from, uid_to, amount, cause]
+            uid_from, false, 'DonateFrom', [uid_from, uid_to, amount, cause, tax_reduction]
         );
         console.log('Donation has been submitted');
         return JSON.parse(res.toString())
@@ -84,7 +84,8 @@ export default class FabricService {
 
     static async InitUser(uid){
         await this.RegisterUser(uid);
-        // await this.Deposit(uid, 40000);
+        // Setup a balance of 0 for user, for future use
+        await this.Deposit(uid, 0);
     }
 
     static async RegisterAdmin(){

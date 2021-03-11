@@ -3,7 +3,7 @@ import FabricService from "../../services/fabric";
 
 const router = express.Router();
 
-router.post('/', async (req, res) => {
+router.get('/', async (req, res) => {
     // Get the balance of the current user.
     try {
         const balance = await FabricService.GetBalanceDonor(res.locals.uid)

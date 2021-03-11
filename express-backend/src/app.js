@@ -31,22 +31,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use(
     '/auth',
-    validatorMiddleware,
     isAuthenticated,
+    validatorMiddleware,
     authRouter
 );
 app.use(
     '/api/donor',
-    validatorMiddleware,
     isAuthenticated,
     isAuthorized({ hasRole: ['donor'] }),
+    validatorMiddleware,
     donorRouter
 );
 app.use(
     '/api/donee',
-    validatorMiddleware,
     isAuthenticated,
     isAuthorized({ hasRole: ['donee', 'beneficiary'] }),
+    validatorMiddleware,
     doneeRouter
 );
 app.use('/api/activity', activityRouter);
