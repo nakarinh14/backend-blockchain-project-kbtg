@@ -42,10 +42,11 @@ app.use(
     validatorMiddleware,
     donorRouter
 );
+// Temporary disable middlewares for demo
 app.use(
     '/api/donee',
-    isAuthenticated,
-    isAuthorized({ hasRole: ['donee', 'beneficiary'] }),
+    // isAuthenticated,
+    // isAuthorized({ hasRole: ['donee', 'beneficiary'] }),
     validatorMiddleware,
     doneeRouter
 );

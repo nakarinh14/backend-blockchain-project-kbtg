@@ -84,9 +84,6 @@ export default class CertificateService {
     static async generateCertificate(donateStatus) {
         // Parse data
         const timestamp = new Date(donateStatus.timestamp);
-        const snapshot = await admin.database().ref(`users/${donateStatus.from}`).once('value');
-        const userRecord = snapshot.val();
-        const fullName = `${userRecord.firstname} ${userRecord.lastname}`
 
         // Initiate bucket
         const bucket = admin.storage().bucket()
@@ -100,7 +97,7 @@ export default class CertificateService {
         });
         // Pipe its output to the bucket
         doc.pipe(bucketFileStream);
-        await this._writeContent(doc, fullName, donateStatus.to, donateStatus.amount, timestamp.toDateString())
+        await this._writeContent(doc, donateStatus.fullname, donateStatus.to, donateStatus.amount, timestamp.toDateString())
         doc.end();
         console.log("Finish PDF File Stream")
     }

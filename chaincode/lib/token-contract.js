@@ -192,9 +192,9 @@ class TokenERC20Contract extends Contract {
     * @param {Integer} value The amount of token to be transferred
     * @returns {Boolean} Return whether the transfer was successful or not
     */
-    async DonateFrom(ctx, from, to, amount, cause, tax_reduction) {
+    async DonateFrom(ctx, from, to, amount, cause, tax_reduction, fullname) {
         // Convert value from string to int
-        const transferResp = await this._transfer(ctx, from, to, amount, cause, tax_reduction);
+        const transferResp = await this._transfer(ctx, from, to, amount, cause, tax_reduction, fullname);
         if (!transferResp) {
             throw new Error('Failed to transfer');
         }
@@ -204,14 +204,15 @@ class TokenERC20Contract extends Contract {
         ctx.stub.setEvent('Transfer', Buffer.from(JSON.stringify(transferEvent)));
         const timestamp = parseDateTime(ctx.stub.getTxTimestamp())
         console.log('donateFrom ended successfully');
-        return  {
+        return {
             ...transferEvent,
             txId: ctx.stub.getTxID(), 
             timestamp, 
+            fullname
         };
     }
 
-    async _transfer(ctx, from, to, value, cause, tax_reduction) {
+    async _transfer(ctx, from, to, value, cause, tax_reduction, fullname) {
 
         // Convert value from string to int
         const valueInt = parseInt(_convertDecimalToInt(value));
@@ -254,7 +255,7 @@ class TokenERC20Contract extends Contract {
         // Add transaction history
 
         const lastTransaction = Buffer.from(JSON.stringify({
-            from, to, value, cause, tax_reduction
+            from, to, value, cause, tax_reduction, fullname
         }))
         
         const lastTransactionFrom = ctx.stub.createCompositeKey(lastTransactionPrefix, [from])

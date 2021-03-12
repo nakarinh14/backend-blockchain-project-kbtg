@@ -21,13 +21,13 @@ export default class FabricService {
         return true
     }
 
-    static async Donate(uid_from, uid_to, amount, cause, tax_reduction) {
+    static async Donate(uid_from, uid_to, amount, cause, tax_reduction, fullname) {
 
         // Submit the specified transaction.
         console.log(`${uid_from} donating to ${uid_to} for ${amount} to ${cause} cause`)
         // Parse value amount in 2 decimal float for visual consistency
         const res = await this.executeTransaction(
-            uid_from, false, 'DonateFrom', [uid_from, uid_to, parseFloat(amount).toFixed(2), cause, tax_reduction]
+            uid_from, false, 'DonateFrom', [uid_from, uid_to, parseFloat(amount).toFixed(2), cause, tax_reduction, fullname]
         );
         console.log('Donation has been submitted');
         return JSON.parse(res.toString())
@@ -39,10 +39,14 @@ export default class FabricService {
         return res.toString()
     }
 
-    static async Redeem(uid, amount, cause) {
+    static async GetBalanceDonee(org){
+        const res = await this.executeTransaction('admin', true, 'BalanceOfDonee', [org])
+        return JSON.parse(res.toString())
+    }
+    static async Redeem(org, amount, cause) {
         // Submit the specified transaction.
         const res = await this.executeTransaction(
-            uid, false, 'BurnFrom', [uid, amount, cause]
+            'admin', false, 'BurnFrom', [org, amount, cause]
         )
         console.log(`Redeem is successful on ${uid}`);
         // Disconnect from the gateway.

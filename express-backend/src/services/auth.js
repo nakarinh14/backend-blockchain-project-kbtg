@@ -17,6 +17,12 @@ export default class AuthService {
         await this._addRole(uid, "donor")
     }
 
+    static async GetFullName(uid){
+        const snapshot = await admin.database().ref(`users/${uid}`).once('value');
+        const userRecord = snapshot.val();
+        return `${userRecord.firstname} ${userRecord.lastname}`
+    }
+
     static async _registerProfile(uid, data){
         // Add user profile to the local profile
         const db = admin.database();
@@ -27,8 +33,8 @@ export default class AuthService {
             throw new Error('User profile already exist');
         }
         await ref.set({
-            firstname: data.firstname,
-            lastname: data.lastname
+            firstname: this._titleCase(data.firstname),
+            lastname: this._titleCase(data.lastname)
         })
     }
 
@@ -38,5 +44,9 @@ export default class AuthService {
         if(!userRecord.customClaims || !userRecord.customClaims['role']){
             await admin.auth().setCustomUserClaims(uid, {role})
         }
+    }
+
+    static _titleCase(string){
+        return string[0].toUpperCase() + string.slice(1).toLowerCase();
     }
 }
