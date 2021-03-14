@@ -200,10 +200,11 @@ class TokenERC20Contract extends Contract {
         }
 
         // Emit the Transfer event
-        const transferEvent = { from, to, amount, cause, tax_reduction };
-        ctx.stub.setEvent('Transfer', Buffer.from(JSON.stringify(transferEvent)));
+        const transferEvent = { from, to, amount, cause, tax_reduction, fullname };
+        
         const timestamp = parseDateTime(ctx.stub.getTxTimestamp())
         console.log('donateFrom ended successfully');
+        ctx.stub.setEvent('DonateFrom', Buffer.from(JSON.stringify(transferEvent)));
         return {
             ...transferEvent,
             txId: ctx.stub.getTxID(), 

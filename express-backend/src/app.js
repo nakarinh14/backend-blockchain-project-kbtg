@@ -15,7 +15,7 @@ import { isAuthenticated, isAuthorized } from "./api/middlewares/auth";
 
 // Initialize fabric admin
 import FabricService from "./services/fabric";
-FabricService.RegisterAdmin()
+FabricService.Initialize()
 
 
 const app = express();
@@ -45,8 +45,6 @@ app.use(
 // Temporary disable middlewares for demo
 app.use(
     '/api/donee',
-    // isAuthenticated,
-    // isAuthorized({ hasRole: ['donee', 'beneficiary'] }),
     validatorMiddleware,
     doneeRouter
 );

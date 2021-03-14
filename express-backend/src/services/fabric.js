@@ -1,5 +1,6 @@
 import {Gateway, Wallets} from 'fabric-network';
 import FabricCAServices from 'fabric-ca-client';
+import admin from '../config/firebaseConfig'
 import fs from 'fs';
 import path from 'path';
 
@@ -195,6 +196,44 @@ export default class FabricService {
         await gateway.disconnect();
 
         return res;
+    }
+
+    static async AddDonateListener(){
+        // Create a new file system based wallet for managing identities.
+        const walletPath = path.join(process.cwd(), 'wallet');
+        const wallet = await Wallets.newFileSystemWallet(walletPath);
+        console.log(`Wallet path: ${walletPath}`);
+
+        // Check to see if we've already enrolled the admin.
+        const identity = await wallet.get('admin');
+        if (!identity) {
+            throw new Error(`An identity for the admin does not exist in the wallet`)
+        }
+        const gateway = new Gateway();
+        await gateway.connect(ccp,
+            {
+                wallet,
+                identity: 'admin',
+                discovery: { enabled: true, asLocalhost: true }
+            });
+        const network = await gateway.getNetwork('mychannel');
+        const contract = network.getContract('ktw-coin');
+        await contract.addContractListener(async (event) => {
+            if(event.eventName === 'DonateFrom'){
+                const details = JSON.parse(event.payload.toString())
+                admin.database().ref('')
+                console.log(details)
+            }
+        })
+    }
+
+    static async Initialize(){
+        try{
+            await this.RegisterAdmin();
+            await this.AddDonateListener();
+        } catch (err){
+            console.log(err)
+        }
     }
 
 }
